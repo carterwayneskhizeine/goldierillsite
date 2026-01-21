@@ -219,12 +219,41 @@ void main() {
   window.addEventListener('mousedown', onMouseDown, false);
   window.addEventListener('mouseup', onMouseUp, false);
 
+  // 8. 触摸事件支持（移动设备交互）
+  function onTouchStart(event) {
+    if (event.touches.length === 1) {
+      const touch = event.touches[0];
+      uniforms.iMouse.value.x = touch.clientX;
+      uniforms.iMouse.value.y = window.innerHeight - touch.clientY;
+      uniforms.iMouse.value.z = 1;
+    }
+  }
+
+  function onTouchMove(event) {
+    if (event.touches.length === 1) {
+      const touch = event.touches[0];
+      uniforms.iMouse.value.x = touch.clientX;
+      uniforms.iMouse.value.y = window.innerHeight - touch.clientY;
+    }
+  }
+
+  function onTouchEnd(event) {
+    uniforms.iMouse.value.z = 0;
+  }
+
+  window.addEventListener('touchstart', onTouchStart, false);
+  window.addEventListener('touchmove', onTouchMove, false);
+  window.addEventListener('touchend', onTouchEnd, false);
+
   // 清理函数，当页面被销毁时调用
   section._cleanup = () => {
     window.removeEventListener('resize', onWindowResize);
     window.removeEventListener('mousemove', onMouseMove);
     window.removeEventListener('mousedown', onMouseDown);
     window.removeEventListener('mouseup', onMouseUp);
+    window.removeEventListener('touchstart', onTouchStart);
+    window.removeEventListener('touchmove', onTouchMove);
+    window.removeEventListener('touchend', onTouchEnd);
     cancelAnimationFrame(animationId);
     renderer.dispose();
     geometry.dispose();
