@@ -1,6 +1,7 @@
 import './style.css'
 import { createPageOne } from './pages/PageOne.js'
 import { createPageTwo } from './pages/PageTwo.js'
+import { createIcpFooter } from './components/IcpFooter.js'
 import { createPageThree } from './pages/PageThree.js'
 import { createPageFour } from './pages/PageFour.js'
 import { createPageFive } from './pages/PageFive.js'
@@ -40,6 +41,10 @@ pages.forEach(page => container.appendChild(page))  // Real pages in the middle
 container.appendChild(firstPageClone)    // Clone of first page at the end
 
 app.appendChild(container)
+
+// Create and append ICP footer
+const icpFooter = createIcpFooter()
+app.appendChild(icpFooter)
 
 // Initialize at the first real page (index 1, after the clone)
 container.style.transform = 'translateY(-100vh)'

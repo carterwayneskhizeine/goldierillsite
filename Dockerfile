@@ -18,5 +18,5 @@ COPY . .
 # 暴露端口
 EXPOSE 5933
 
-# 启动开发服务器
-CMD ["npx", "vite", "--host", "0.0.0.0", "--port", "5933"]
+# 启动开发服务器 (使用轮询模式以支持 Windows Docker 热重载)
+CMD ["npx", "vite", "--host", "0.0.0.0", "--port", "5933", "--force"]
