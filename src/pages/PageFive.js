@@ -173,8 +173,13 @@ void main() {
 
   // 5. 动画循环
   let animationId;
+  let isRunning = true;
+
   function animate(time) {
+    if (!isRunning) return;
     animationId = requestAnimationFrame(animate);
+
+    if (time === undefined) time = performance.now();
 
     // 更新时间 (从毫秒转换为秒)
     uniforms.iTime.value = time * 0.001;
@@ -183,6 +188,18 @@ void main() {
   }
 
   animate();
+
+  section.play = () => {
+    if (!isRunning) {
+      isRunning = true;
+      animate();
+    }
+  };
+
+  section.pause = () => {
+    isRunning = false;
+    cancelAnimationFrame(animationId);
+  };
 
   // 6. 处理窗口大小调整
   function onWindowResize() {

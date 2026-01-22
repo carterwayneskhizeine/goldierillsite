@@ -63,6 +63,11 @@ if (isMobileDevice()) {
   // Initialize at the first real page (index 1, after the clone)
   container.style.transform = 'translateY(-100vh)'
 
+  // Optimization: Pause all pages initially, then play the current one
+  const allPages = Array.from(container.children);
+  allPages.forEach(p => p.pause && p.pause());
+  if (allPages[1] && allPages[1].play) allPages[1].play();
+
   // Full page scroll logic
   // currentPage represents the actual position in the DOM (including clones)
   // 0 = lastPageClone, 1-9 = real pages, 10 = firstPageClone
@@ -78,6 +83,10 @@ if (isMobileDevice()) {
     // Normalize index to stay within bounds
     if (index < 0) index = 0
     if (index >= totalPages) index = totalPages - 1
+
+    // Optimization: Play the target page before scrolling
+    const allPages = Array.from(container.children);
+    if (allPages[index] && allPages[index].play) allPages[index].play();
 
     isScrolling = true
     currentPage = index
@@ -103,6 +112,15 @@ if (isMobileDevice()) {
         // Force reflow
         container.offsetHeight
       }
+
+      // Optimization: Pause all pages except the current one
+      allPages.forEach((p, i) => {
+        if (i === currentPage) {
+             if (p.play) p.play();
+        } else {
+             if (p.pause) p.pause();
+        }
+      });
 
       isScrolling = false
     }, { once: true })
