@@ -1,4 +1,11 @@
 /**
+ * Configuration for mobile device behavior
+ * Set to true: Show only PageThree on mobile devices
+ * Set to false: Show all pages on mobile devices (same as desktop)
+ */
+export const MOBILE_SINGLE_PAGE_MODE = false
+
+/**
  * Detect if the current device is a mobile device
  * @returns {boolean} true if mobile device, false otherwise
  */

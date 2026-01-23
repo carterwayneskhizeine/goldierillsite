@@ -9,13 +9,13 @@ import { createPageSix } from './pages/PageSix.js'
 import { createPageSeven } from './pages/PageSeven.js'
 import { createPageEight } from './pages/PageEight.js'
 import { createPageNine } from './pages/PageNine.js'
-import { isMobileDevice } from './utils/deviceDetector.js'
+import { isMobileDevice, MOBILE_SINGLE_PAGE_MODE } from './utils/deviceDetector.js'
 
 // Initialize app
 const app = document.querySelector('#app')
 
-// Check if mobile device - if so, only show PageThree
-if (isMobileDevice()) {
+// Check if mobile device and single page mode is enabled
+if (isMobileDevice() && MOBILE_SINGLE_PAGE_MODE) {
   // Mobile: Show only PageThree
   const pageThree = createPageThree()
   pageThree.style.height = '100vh'

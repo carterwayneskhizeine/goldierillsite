@@ -3,23 +3,23 @@
 ### 基础命令
 - **构建并启动容器**
   ```bash
-  docker-compose up -d
+  docker compose up -d
   ```
 - **查看日志**
   ```bash
-  docker-compose logs -f
+  docker compose logs -f
   ```
 - **停止容器**
   ```bash
-  docker-compose down
+  docker compose down
   ```
 - **重新构建镜像**
   ```bash
-  docker-compose up -d --build
+  docker compose up -d --build
   ```
 - **重启服务**
   ```bash
-  docker-compose down && docker-compose up -d
+  docker compose down && docker compose up -d
   ```
 ### 访问信息
 - **访问地址**：http://localhost:5933
