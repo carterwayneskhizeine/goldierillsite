@@ -25,68 +25,128 @@ if (isMobileDevice() && MOBILE_SINGLE_PAGE_MODE) {
   const icpFooter = createIcpFooter()
   app.appendChild(icpFooter)
 } else {
-  // Desktop: Show all pages with scrolling
+  // Desktop (or Mobile with full site): Show all pages with scrolling and lazy loading
 
   // Create container for all pages
   const container = document.createElement('div')
   container.className = 'pages-container'
 
-  // Create all pages
-  const pages = [
-    createPageOne(),
-    createPageTwo(),
-    createPageThree(),
-    createPageFour(),
-    createPageFive(),
-    createPageSix(),
-    createPageSeven(),
-    createPageEight(),
-    createPageNine()
+  // Define page factories
+  const pageFactories = [
+    createPageOne,
+    createPageTwo,
+    createPageThree,
+    createPageFour,
+    createPageFive,
+    createPageSix,
+    createPageSeven,
+    createPageEight,
+    createPageNine
   ]
 
-  // Create new instances for seamless circular scrolling
-  // (We can't use cloneNode because it doesn't copy WebGL context)
-  const firstPageClone = createPageOne()   // New instance of first page
-  const lastPageClone = createPageNine()   // New instance of last page
+  // We need slots for: [Clone 9] + [1..9] + [Clone 1] = 11 slots
+  const slots = []
 
-  // Build DOM: [lastPageClone] + [real pages] + [firstPageClone]
-  container.appendChild(lastPageClone)     // Clone of last page at the beginning
-  pages.forEach(page => container.appendChild(page))  // Real pages in the middle
-  container.appendChild(firstPageClone)    // Clone of first page at the end
+  // Helper to create a slot wrapper
+  function createSlot(factoryIndex) {
+    const wrapper = document.createElement('div')
+    wrapper.className = 'page-wrapper'
+    wrapper.style.height = '100vh'
+    wrapper.style.width = '100%'
+    wrapper.style.position = 'relative'
+    
+    return {
+      wrapper,
+      instance: null,
+      factory: pageFactories[factoryIndex]
+    }
+  }
 
+  // 0. Clone of PageNine (index 8)
+  slots.push(createSlot(8))
+
+  // 1-9. Real pages (indices 0-8)
+  for (let i = 0; i < pageFactories.length; i++) {
+    slots.push(createSlot(i))
+  }
+
+  // 10. Clone of PageOne (index 0)
+  slots.push(createSlot(0))
+
+  // Append wrappers to container
+  slots.forEach(slot => container.appendChild(slot.wrapper))
   app.appendChild(container)
 
   // Create and append ICP footer
   const icpFooter = createIcpFooter()
   app.appendChild(icpFooter)
 
-  // Initialize at the first real page (index 1, after the clone)
-  container.style.transform = 'translateY(-100vh)'
+  // Lazy Loading Logic
+  function loadPage(slotIndex) {
+    const slot = slots[slotIndex]
+    if (!slot) return
 
-  // Optimization: Pause all pages initially, then play the current one
-  const allPages = Array.from(container.children);
-  allPages.forEach(p => p.pause && p.pause());
-  if (allPages[1] && allPages[1].play) allPages[1].play();
+    if (!slot.instance) {
+      // Create instance
+      slot.instance = slot.factory()
+      slot.wrapper.appendChild(slot.instance)
+      if (slot.instance.play) slot.instance.play()
+    } else {
+      // Ensure it's playing
+      if (slot.instance.play) slot.instance.play()
+    }
+  }
+
+  function unloadPage(slotIndex) {
+    const slot = slots[slotIndex]
+    if (!slot) return
+
+    if (slot.instance) {
+      // Cleanup instance
+      if (slot.instance._cleanup) slot.instance._cleanup()
+      // Remove from DOM
+      if (slot.instance.parentNode) {
+        slot.instance.parentNode.removeChild(slot.instance)
+      }
+      slot.instance = null
+    }
+  }
+
+  // Ensure only the current page and its immediate neighbors are loaded
+  function updateActivePages(currentIndex) {
+    // Range of pages to keep active (current +/- 1)
+    // This keeps maximum 3 WebGL contexts active, which is safe for mobile
+    const range = 1 
+    
+    for (let i = 0; i < slots.length; i++) {
+      if (Math.abs(i - currentIndex) <= range) {
+        loadPage(i)
+      } else {
+        unloadPage(i)
+      }
+    }
+  }
+
+  // Initialize at the first real page (index 1)
+  let currentPage = 1
+  container.style.transform = `translateY(-${currentPage * 100}vh)`
+  updateActivePages(currentPage)
 
   // Full page scroll logic
-  // currentPage represents the actual position in the DOM (including clones)
-  // 0 = lastPageClone, 1-9 = real pages, 10 = firstPageClone
-  let currentPage = 1  // Start at the real first page
   let isScrolling = false
 
   function scrollToPage(index) {
     if (isScrolling) return
 
-    // Calculate boundaries (1 page before real first, 1 page after real last)
-    const totalPages = pages.length + 2  // 11 total (9 real + 2 clones)
+    const totalPages = slots.length
 
-    // Normalize index to stay within bounds
+    // Normalize index
     if (index < 0) index = 0
     if (index >= totalPages) index = totalPages - 1
 
-    // Optimization: Play the target page before scrolling
-    const allPages = Array.from(container.children);
-    if (allPages[index] && allPages[index].play) allPages[index].play();
+    // Pre-load the target page (and neighbors) before scrolling
+    // This ensures the page we are scrolling to is ready
+    updateActivePages(index)
 
     isScrolling = true
     currentPage = index
@@ -94,33 +154,30 @@ if (isMobileDevice() && MOBILE_SINGLE_PAGE_MODE) {
     container.style.transition = 'transform 0.8s cubic-bezier(0.645, 0.045, 0.355, 1)'
     container.style.transform = `translateY(-${currentPage * 100}vh)`
 
-    // Wait for transition to complete, then check if we need to jump to real page
+    // Wait for transition to complete
     container.addEventListener('transitionend', function handler() {
-      // If we're at the clone of the last page (index 0), jump to real last page (index 9)
+      // Teleport logic for infinite scroll
+      let newIndex = currentPage
+
+      // If at Clone 9 (index 0), jump to Real 9 (index 9)
       if (currentPage === 0) {
-        container.style.transition = 'none'
-        currentPage = pages.length  // Jump to real last page
-        container.style.transform = `translateY(-${currentPage * 100}vh)`
-        // Force reflow
-        container.offsetHeight
+        newIndex = pageFactories.length // 9
       }
-      // If we're at the clone of the first page (index 10), jump to real first page (index 1)
-      else if (currentPage === pages.length + 1) {
-        container.style.transition = 'none'
-        currentPage = 1  // Jump to real first page
-        container.style.transform = `translateY(-${currentPage * 100}vh)`
-        // Force reflow
-        container.offsetHeight
+      // If at Clone 1 (index 10), jump to Real 1 (index 1)
+      else if (currentPage === slots.length - 1) {
+        newIndex = 1
       }
 
-      // Optimization: Pause all pages except the current one
-      allPages.forEach((p, i) => {
-        if (i === currentPage) {
-             if (p.play) p.play();
-        } else {
-             if (p.pause) p.pause();
-        }
-      });
+      if (newIndex !== currentPage) {
+        container.style.transition = 'none'
+        currentPage = newIndex
+        container.style.transform = `translateY(-${currentPage * 100}vh)`
+        // Force reflow
+        container.offsetHeight
+        
+        // Update active pages for the new position (in case we jumped far)
+        updateActivePages(currentPage)
+      }
 
       isScrolling = false
     }, { once: true })
