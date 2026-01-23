@@ -24,124 +24,150 @@ export function createPageFive() {
 uniform float iTime;
 uniform vec3 iResolution;
 
-// Created by Hazel Quantock 2019
-// This work is licensed under a Creative Commons Attribution-NonCommercial-ShareAlike 4.0 International License.
+// Day 168 !
+// Having a play with repeated angular repetition.
 
-const int numCubes = 32;
-const float twistStep = .06;
-const float scaleStep = 0.96;
-const float zoom = 3.7;
-const float lineThickness = 1.2; // in pixels
+#define res iResolution.xy
+#define B vec3(0.2126, 0.7152, 0.0722)
+#define PI 3.141
 
-// input in range [-1,1] to span iResolution.y pixels
-float RenderLine( vec2 a, vec2 b, vec2 fragCoord )
-{
-    a = (iResolution.y*a + iResolution.xy)*.5;
-    b = (iResolution.y*b + iResolution.xy)*.5;
+mat2 rotMat(float a) { float c = cos(a), s = sin(a); return mat2(c, -s, s, c); }
 
-    const float halfThickness = lineThickness*.5;
-
-    const float halfAASoftening = .7; // in pixels (don't change this much)
-
-    float t = dot(fragCoord-a,b-a);
-    t /= dot(b-a,b-a);
-    t = clamp( t, 0., 1. );
-    return smoothstep( halfThickness-halfAASoftening, halfThickness+halfAASoftening, length(fragCoord - mix(a,b,t)) );
+vec3 camPath(float t) {
+    return 5.0 * vec3(cos(t), 1.0, sin(t));
 }
 
+vec2 angularRep(vec2 p, float n, float sa) {
+    float a = atan(p.y, p.x) + sa;
+    float r = length(p);
 
-float RenderLine3D( vec3 a, vec3 b, vec2 fragCoord )
-{
-    vec3 camPos = vec3(0,0,-5);
+    float sector = 2.0 * PI / n;
 
-    a -= camPos;
-    b -= camPos;
+    a = mod(a + sector * 0.5, sector) - sector * 0.5;
 
-    // todo: transform by camera matrix
-
-    a.z /= zoom;
-    b.z /= zoom;
-
-    // perspective projection
-    return RenderLine( a.xy/a.z, b.xy/b.z, fragCoord );
+    return vec2(cos(a) * r, sin(a) * r);
 }
 
+float map(vec3 p) {
+    vec3 q = p;
 
-// combine 2 anti-aliased values
-float BlendAA( float a, float b )
-{
-    // a and b values represent what proportion of the pixel is covered by each line,
-    // but they don't contain enough information to accurately combine them!
-    // if both lines are covering the same part of the pixel the result should be min(a,b)
-    // if they cover non-overlapping parts of the pixel the result is a-(1-b)
-	// a*b assumes the proportion of overlap is the same in the solid and clear regions
-    // this is the safest assumption given the lack of any other info
+    float d1 = 1e20;
 
-    // but, tune it until it looks good
-    return mix( min(a,b), a*b, .5 );
-}
+    float n = 5.0;
+    float s = 1.0;
+    for(int i = 0; i < 3; i++) {
+        p.xz = angularRep(p.xz, n, (iTime + p.y) * (0.1 + float(i)));
+        //p.xy = angularRep(p.xy, 2.0 * n, iTime * 0.5 * float(i));
+        p -= vec3(1.0, 0.0, 0.0) * s;
+        d1 = min(d1, length(p.xz) - s * 0.1);
 
-
-void mainImage( out vec4 fragColour, in vec2 fragCoord )
-{
-    fragColour.rgb = vec3(.8);
-
-    vec3 a = vec3(twistStep*cos(iTime*3./vec3(11,13,17)+1.5));
-    mat3 stepTransform =
-        scaleStep *
-        mat3( cos(a.z), sin(a.z), 0,
-             -sin(a.z), cos(a.z), 0,
-              0, 0, 1 ) *
-        mat3( cos(a.y), 0, sin(a.y),
-             0, 1, 0,
-             -sin(a.y), 0, cos(a.y) ) *
-        mat3( 1, 0, 0,
-              0, cos(a.x), sin(a.x),
-              0,-sin(a.x), cos(a.x) );
-
-    vec3 b = vec3(.7+iTime/6.,.7+iTime/6.,.6);
-    mat3 transform =
-        mat3( cos(b.z), sin(b.z), 0,
-             -sin(b.z), cos(b.z), 0,
-              0, 0, 1 ) *
-        mat3( cos(b.y), 0, sin(b.y),
-             0, 1, 0,
-             -sin(b.y), 0, cos(b.y) ) *
-        mat3( 1, 0, 0,
-              0, cos(b.x), sin(b.x),
-              0,-sin(b.x), cos(b.x) );
-
-    float line = 1.;
-    #define DrawLine(a,b) line = BlendAA( line, RenderLine3D(a,b,fragCoord) );
-
-    for ( int cube=0; cube < numCubes; cube++ )
-    {
-        vec3 vertices[8];
-        for ( int i=0; i < 8; i++ )
-        {
-            vertices[i] = transform*(vec3(i>>2,(i>>1)&1,i&1)*2.-1.);
-        }
-
-        DrawLine( vertices[0], vertices[1] );
-        DrawLine( vertices[2], vertices[3] );
-        DrawLine( vertices[4], vertices[5] );
-        DrawLine( vertices[6], vertices[7] );
-        DrawLine( vertices[0], vertices[2] );
-        DrawLine( vertices[1], vertices[3] );
-        DrawLine( vertices[4], vertices[6] );
-        DrawLine( vertices[5], vertices[7] );
-        DrawLine( vertices[0], vertices[4] );
-        DrawLine( vertices[1], vertices[5] );
-        DrawLine( vertices[2], vertices[6] );
-        DrawLine( vertices[3], vertices[7] );
-
-        transform *= stepTransform;
+        s *= 0.25;
     }
 
-    fragColour.rgb = mix( vec3(.02), vec3(.8), line );
+    return max(d1, p.y);
+}
 
-    fragColour.rgb = pow(fragColour.rgb,vec3(1./2.2));
-    fragColour.a = 1.;
+vec2 raymarch(vec3 rayOrigin, vec3 rayDir, int iter, bool f) {
+    float td = 0.0;
+    bool hit = false;
+    float ld = 1e20;
+
+    float k = f ? -1.0 : 1.0;
+    for(int i = 0; i < iter; i++) {
+        vec3 rayPos = rayOrigin + rayDir * td;
+        float d = map(rayPos) * k;
+        if(i == 0) ld = d;
+
+        if(d < 0.005 && abs(ld - d) < 0.01) { hit = true; break; }
+
+        td += d; ld = d;
+        if(td > 120.0) { td = 120.0; break; }
+    }
+
+    return vec2(hit, td);
+}
+vec2 raymarch(vec3 rayOrigin, vec3 rayDir) { return raymarch(rayOrigin, rayDir, 200, false); }
+
+float softShadow(vec3 ro, vec3 rd, float k) {
+    float re = 1.0;
+    float t = 0.01;
+    for (int i = 0; i < 50; i++) {
+        float h = map(ro + rd * t);
+        if (h < 0.001) return 0.0;
+        re = min(re, k * h / t);
+        t += h;
+        if (t > 10.0) break;
+    }
+    return tanh(re);
+}
+
+float edge;
+vec3 getNormal(vec3 p) {
+    float t = 0.1;
+    vec2 e = vec2(1./mix(400., iResolution.y, .5)*(1. + t*.5), 0) * 15.;
+
+    float d1 = map(p + e.xyy), d2 = map(p - e.xyy);
+    float d3 = map(p + e.yxy), d4 = map(p - e.yxy);
+    float d5 = map(p + e.yyx), d6 = map(p - e.yyx);
+    float d = map(p)*2.;
+
+    edge = abs(d1 + d2 - d) + abs(d3 + d4 - d) + abs(d5 + d6 - d);
+    edge = smoothstep(0., 1., sqrt(edge/e.x*2.));
+
+    e = vec2(.002, 0);
+    d1 = map(p + e.xyy), d2 = map(p - e.xyy);
+    d3 = map(p + e.yxy), d4 = map(p - e.yxy);
+    d5 = map(p + e.yyx), d6 = map(p - e.yyx);
+
+    return normalize(vec3(d1 - d2, d3 - d4, d5 - d6));
+}
+
+void mainImage( out vec4 O, in vec2 I )
+{
+    vec2 p = (I - 0.5 * res) / res.y;
+
+    float time = iTime * 0.3 - 0.5 - 0.5 * 3.141;
+    vec3 camPos = camPath(time);
+    vec3 camDir = normalize(-camPos);
+
+    float fov = radians(45.0);
+    vec3 worldUp = vec3(0.0, 1.0, 0.0);
+    vec3 camRight = normalize(cross(camDir, worldUp));
+    vec3 camUp = cross(camRight, camDir);
+
+    float t = tan(fov * 0.5);
+
+    vec3 rayOrigin = camPos;
+    vec3 rayDir = normalize(camDir + p.x * camRight * t + p.y * camUp * t);
+
+    vec2 rm = raymarch(rayOrigin, rayDir);
+    bool hit = rm.x > 0.5;
+    float td = rm.y;
+
+    vec3 col;
+    if(hit) {
+        vec3 hitPoint = rayOrigin + rayDir * td;
+        vec3 normal = getNormal(hitPoint);
+        //normal = doBumpMap(hitPoint, normal, 0.02);
+
+        float time = 0.5 * iTime;
+        vec3 lightDir = normalize(vec3(1));
+
+        float shadow = softShadow(hitPoint + 0.3 * normal, lightDir, 1.0);
+        float specular = pow(dot(reflect(hitPoint, normal), lightDir), 15.0);
+
+        float light = shadow + tanh(5.0 * specular);
+
+        vec3 color;
+        color = vec3(1.0);
+
+        col = color * light;
+    }
+    else {
+        col = vec3(1);
+    }
+
+    O = vec4(col, 1.0);
 }
 
 // Three.js 的主入口函数
