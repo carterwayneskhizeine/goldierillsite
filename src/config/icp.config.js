@@ -8,5 +8,12 @@ export const icpConfig = {
   icpNumber: '黔ICP备2026001073号-1',
 
   // 备案链接
-  beianUrl: 'https://beian.miit.gov.cn'
+  beianUrl: 'https://beian.miit.gov.cn',
+
+  // 公网安备案号
+  gonganConfig: {
+    beianNumber: '贵公网安备52230102000480号',
+    beianUrl: 'https://beian.mps.gov.cn/#/query/webSearch?code=52230102000480',
+    iconPath: '/备案图标.png'
+  }
 }
