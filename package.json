@@ -13,5 +13,6 @@
   },
   "dependencies": {
     "three": "^0.182.0"
-  }
+  },
+  "pnpm": {}
 }
